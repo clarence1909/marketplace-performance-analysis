@@ -216,3 +216,20 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# --- Project-specific: Olist marketplace analysis ---
+
+# Raw Kaggle CSVs (~100k rows, large, and Olist's license doesn't cover
+# redistribution) - download fresh per README.md instead of committing.
+data/
+*.csv
+
+# Power BI local cache/backup files (not the .pbix itself - that's meant
+# to be committed so a reviewer can open the finished dashboard)
+*.pbix.bak
+*.pbit
+
+# OS junk
+.DS_Store
+Thumbs.db
+desktop.ini
