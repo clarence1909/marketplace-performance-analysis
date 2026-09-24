@@ -87,6 +87,15 @@ LEFT JOIN review_agg ra ON ra.order_id = o.order_id;
 -- would want those rows. Keeping the filter at the query level rather than
 -- baking it into the view keeps that choice visible instead of hidden.
 
--- Quick sanity check after creating the view: row count here should exactly
--- match COUNT(*) FROM orders (one row per order, no fan-out).
+-- Quick sanity checks after creating the view:
+--   1. One row per order, no fan-out. Should equal COUNT(*) FROM orders
+--      (99,441 on the Kaggle data):
 -- SELECT COUNT(*) FROM fact_orders;
+--   2. GMV reconciles to the raw item table. The two numbers should be
+--      identical (R$15,843,553.24 on the Kaggle data):
+-- SELECT (SELECT SUM(gmv) FROM fact_orders)                  AS view_gmv,
+--        (SELECT SUM(price + freight_value) FROM order_items) AS raw_items_gmv;
+--
+-- Orders with no item rows at all (775 on the Kaggle data, almost all
+-- 'unavailable' or 'canceled' -- see D5 in 02_data_quality_checks.sql)
+-- come through with num_items = NULL and gmv = 0.

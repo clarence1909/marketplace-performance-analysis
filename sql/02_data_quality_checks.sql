@@ -9,6 +9,25 @@
 --   next one -- some of the choices in 03_fact_orders.sql depend on what you
 --   find here (e.g. how review_score is aggregated, why GMV isn't summed
 --   from order_payments).
+--
+-- What these checks found on the Kaggle data (run the file yourself and
+-- compare -- your numbers should match exactly):
+--   A  99,441 orders | 112,650 order items | 103,886 payment rows |
+--      99,224 review rows | 99,441 customers | 32,951 products |
+--      3,095 sellers | 71 category translations
+--   C  No duplicate natural keys. BUT 789 review_ids are reused across
+--      1,603 review rows (C6), so review_id is not a safe unique key.
+--   D  9,803 orders have 2+ items (max 21); 2,961 have 2+ payment rows
+--      (max 29); 547 have 2-3 reviews and 768 have none; 99,441
+--      customer_ids belong to only 96,096 real customers; 775 orders have
+--      no items at all (603 unavailable, 164 canceled, 8 other).
+--   E  No orphaned keys. 2 product categories have no English translation
+--      (pc_gamer, portateis_cozinha_e_preparadores_de_alimentos).
+--   F  0 deliveries before purchase; 8 'delivered' orders with no delivery
+--      date; 6 canceled orders that do have a delivery date.
+--   H  Edge months are tiny: Sep 2016 = 4 orders, Oct 2016 = 324,
+--      Nov 2016 = 0, Dec 2016 = 1, Sep 2018 = 16, Oct 2018 = 4 -- versus
+--      6,167 to 7,269 orders a month through 2018.
 -- ============================================================================
 
 
@@ -98,6 +117,18 @@ FROM order_reviews
 GROUP BY review_id, order_id, review_score, review_creation_date
 HAVING COUNT(*) > 1;
 
+-- C6. review_id on its own: is it unique? On the Kaggle data it is NOT --
+-- some review_ids are attached to more than one order. So never treat
+-- review_id as a key; go through order_id instead, as 03_fact_orders.sql does.
+SELECT COUNT(*) AS review_ids_used_more_than_once,
+       SUM(n)   AS review_rows_involved
+FROM (
+    SELECT review_id, COUNT(*) AS n
+    FROM order_reviews
+    GROUP BY review_id
+    HAVING COUNT(*) > 1
+) t;
+
 
 -- ============================================================================
 -- D. GRANULARITY CHECKS
@@ -146,6 +177,30 @@ SELECT
     COUNT(DISTINCT customer_id)         AS distinct_customer_id,
     COUNT(DISTINCT customer_unique_id)  AS distinct_customer_unique_id
 FROM customers;
+
+-- D5. Orders with NO child rows at all. D1-D3 only see orders that appear
+-- in the child table, so they can't show these. An order with no items
+-- gets gmv = 0 in fact_orders, so it's worth knowing how many there are
+-- and what status they have. On the Kaggle data almost all are
+-- 'unavailable' or 'canceled', which Q2-Q4 exclude anyway; only 5 slip
+-- through the analysis filters (5 of 97,910 fulfilled orders), too few to
+-- move AOV. (LEFT JOIN to DISTINCT ids rather than NOT EXISTS inside a
+-- FILTER, so Postgres can hash-join instead of looping row by row.)
+SELECT
+    COUNT(*) FILTER (WHERE i.order_id IS NULL) AS orders_with_no_items,
+    COUNT(*) FILTER (WHERE p.order_id IS NULL) AS orders_with_no_payment,
+    COUNT(*) FILTER (WHERE r.order_id IS NULL) AS orders_with_no_review
+FROM orders o
+LEFT JOIN (SELECT DISTINCT order_id FROM order_items)    i ON i.order_id = o.order_id
+LEFT JOIN (SELECT DISTINCT order_id FROM order_payments) p ON p.order_id = o.order_id
+LEFT JOIN (SELECT DISTINCT order_id FROM order_reviews)  r ON r.order_id = o.order_id;
+
+SELECT o.order_status, COUNT(*) AS orders_with_no_items
+FROM orders o
+LEFT JOIN (SELECT DISTINCT order_id FROM order_items) i ON i.order_id = o.order_id
+WHERE i.order_id IS NULL
+GROUP BY o.order_status
+ORDER BY orders_with_no_items DESC;
 
 
 -- ============================================================================

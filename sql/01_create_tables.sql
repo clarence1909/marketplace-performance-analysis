@@ -38,7 +38,9 @@ DROP TABLE IF EXISTS customers CASCADE;
 CREATE TABLE customers (
     customer_id               VARCHAR(32),
     customer_unique_id        VARCHAR(32),
-    customer_zip_code_prefix  INT,        -- first digits of the Brazilian CEP; not a full postcode
+    customer_zip_code_prefix  CHAR(5),    -- first 5 digits of the Brazilian CEP. Stored as text, not INT:
+                                          -- ~24% of values start with 0 (e.g. '01151'), and INT would
+                                          -- silently turn '01151' into 1151. A code is not a number.
     customer_city              VARCHAR(100),
     customer_state              CHAR(2)
 );
@@ -49,7 +51,7 @@ CREATE TABLE customers (
 -- ----------------------------------------------------------------------------
 CREATE TABLE sellers (
     seller_id               VARCHAR(32),
-    seller_zip_code_prefix  INT,
+    seller_zip_code_prefix  CHAR(5),      -- text, not INT -- same leading-zero reason as customers
     seller_city               VARCHAR(100),
     seller_state               CHAR(2)
 );
@@ -184,6 +186,10 @@ CREATE TABLE order_reviews (
 --      Leave the Columns tab at its default (all columns, in table order) --
 --      this only works because each CREATE TABLE above matches its CSV's
 --      column order exactly.
+--      (product_category_name_translation.csv starts with an invisible
+--      byte-order mark in its header row. Harmless here, because Header: Yes
+--      skips that row -- but if you ever read that file in Python, use
+--      encoding='utf-8-sig' or the first column name comes out garbled.)
 --   6. Click OK. Repeat for all 8 tables. Import customers, sellers, products
 --      and product_category_name_translation first, then orders, then
 --      order_items / order_payments / order_reviews last -- not required
