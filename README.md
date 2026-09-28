@@ -109,9 +109,12 @@ implicit in the queries. Every number here comes from
    `NTILE` for seller/state ranking, `ROW_NUMBER` for repeat-order
    sequencing), plus a 95% confidence interval and a within-state check
    for the headline finding.
-5. **Power BI** — `fact_orders` plus seller-comparison queries imported
-   as native SQL, a date table, and DAX measures, laid out across four
-   dashboard pages. Full steps in `powerbi_guide.md`.
+5. **`sql/05_export_for_powerbi.sql`** — exports the four data files the
+   dashboard is built from (the order-level fact table plus the seller and
+   customer summaries), so the hand-off from PostgreSQL to Power BI is
+   itself reproducible.
+6. **Power BI** — the four files, a date table, and DAX measures, laid out
+   across four dashboard pages. Full steps in `powerbi_guide.md`.
 
 ### Verification
 
@@ -136,7 +139,7 @@ didn't:
 
 ## Dashboard
 
-*(add screenshots here once built — see `powerbi_guide.md` section 8)*
+*(add screenshots here once built — see `powerbi_guide.md` section 6)*
 
 - `![Marketplace Overview](dashboard/screenshots/01_overview.png)`
 - `![Delivery & Customer Experience](dashboard/screenshots/02_delivery.png)`
@@ -156,7 +159,9 @@ didn't:
 5. Run `sql/03_fact_orders.sql` to create the `fact_orders` view.
 6. Run `sql/04_analysis.sql` and compare with the "Result" comment under
    each query — your numbers should match exactly.
-7. Follow `powerbi_guide.md` to build the dashboard; section 8 lists the
+7. Run `sql/05_export_for_powerbi.sql` to export the four data files
+   Power BI uses (steps at the top of the file).
+8. Follow `powerbi_guide.md` to build the dashboard; section 6 lists the
    numbers each page should show.
 
 ## Repo structure
@@ -167,6 +172,8 @@ sql/
   02_data_quality_checks.sql
   03_fact_orders.sql
   04_analysis.sql
+  05_export_for_powerbi.sql
+powerbi_data/        (the 4 exported data files - not committed, regenerate with sql/05)
 powerbi_guide.md
 insight_summary.md
 cv_bullets.md

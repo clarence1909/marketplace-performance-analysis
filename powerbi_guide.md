@@ -1,107 +1,74 @@
 # Power BI Guide: Marketplace Performance & Seller Health Dashboard
 
-This guide walks from an empty Power BI Desktop file to a 4-page dashboard
-built on top of the PostgreSQL database from `sql/01_create_tables.sql` –
-`sql/04_analysis.sql`. Follow it in order — later steps assume the model
-built in earlier ones.
+This guide walks from an empty Power BI Desktop file to a 4-page dashboard.
+The dashboard is built from four data files exported from PostgreSQL by
+`sql/05_export_for_powerbi.sql`, so you don't need a database on your PC —
+every number still comes from the SQL in this repo. Follow the sections in
+order; later steps assume the model built in earlier ones.
 
-Run the SQL scripts first (in pgAdmin, in numeric order) before starting
-here. This guide assumes `fact_orders` already exists in your database.
+## 1. What you need
 
-## 1. Prerequisites
+- **Power BI Desktop** (Windows, free) — from the Microsoft Store or
+  microsoft.com/power-bi/desktop.
+- **The four data files**, in the `powerbi_data` folder of this project:
+  - `fact_orders.csv` — one row per order, Jan 2017 – Aug 2018 (99,092 rows)
+  - `seller_tier_comparison.csv` — top 10% of sellers vs the rest (query 4a)
+  - `top_sellers.csv` — the top 20 sellers by GMV (query 4b)
+  - `customer_repeat_summary.csv` — repeat-purchase summary (query Q3)
 
-- Power BI Desktop (Windows), any recent version. Since December 2019,
-  Power BI Desktop ships with the Npgsql PostgreSQL driver built in, so
-  no separate driver install is needed for a normal, up-to-date install.
-  If you're on a very old version and the PostgreSQL connector errors out
-  asking for a provider, install Npgsql 4.0.17 from the
-  [Npgsql releases page](https://github.com/npgsql/npgsql/releases/tag/v4.0.17),
-  matching Power BI's bitness (almost always 64-bit), and select "Npgsql
-  GAC Installation" during setup.
-- PostgreSQL running locally (or reachable) with the Olist data already
-  loaded and `fact_orders` created.
-- Your PostgreSQL username/password handy.
+  They're not in the GitHub repo (`.gitignore` excludes data files). To
+  recreate them, run `sql/01`–`03` in pgAdmin, then follow the export steps
+  at the top of `sql/05_export_for_powerbi.sql`.
 
-## 2. Connect Power BI to PostgreSQL
+## 2. Load the four data files
 
-1. Open Power BI Desktop → **Get Data** → search **PostgreSQL database** →
-   **Connect**.
-2. **Server**: `localhost` (or your server address). **Database**: the
-   name you created in pgAdmin (e.g. `olist_marketplace`).
-3. **Data Connectivity mode**: choose **Import**. At ~100k orders this
-   dataset is small enough that Import gives you a faster, fully
-   interactive dashboard; DirectQuery would just add query latency for
-   no benefit here.
-4. Click **OK**. If prompted about encryption, and your local Postgres
-   isn't set up for SSL, choose the unencrypted-connection option to
-   proceed (fine for a local portfolio project; wouldn't be for a
-   production database with real customer data).
-5. Enter your **Database** credentials (username/password) → **Connect**.
-6. In **Navigator**, tick:
-   - `fact_orders` (the view)
-   - `sellers`
-   That's the core model. Don't select the raw `orders`, `order_items`,
-   `order_payments`, `order_reviews` tables here — `fact_orders` already
-   rolled them up correctly, and pulling in the raw item/payment/review
-   tables alongside it risks re-introducing the exact fan-out problem
-   `03_fact_orders.sql` was built to avoid.
-7. Click **Transform Data** (not Load yet) — we need one filter step
-   first.
+1. Open Power BI Desktop → **Blank report**.
+2. **Home** → **Get data** → **Text/CSV** → pick
+   `powerbi_data\fact_orders.csv` → **Open**.
+3. In the preview window, check **File Origin** is *65001: Unicode
+   (UTF-8)* and **Delimiter** is *Comma*. Set **Data Type Detection** to
+   *Based on entire dataset* — Power BI otherwise guesses each column's type
+   from the first 200 rows only.
+4. Click **Transform Data** (not Load) so you can check the column types
+   before anything is built on them. The icon at the left of each column
+   header shows its type. They should be:
 
-## 3. Filter to the analysis window in Power Query
+   | Columns | Type (icon) |
+   |---|---|
+   | `order_date`, `delivered_date`, `estimated_delivery_date` | Date (calendar) |
+   | `is_late` | True/False (✓✗) |
+   | `num_items`, `days_vs_estimate` | Whole Number (123) |
+   | `item_value`, `freight_value`, `gmv`, `review_score` | Decimal Number (1.2) |
+   | everything else | Text (ABC) |
 
-The project restricts every business-question query to **Jan 2017 – Aug
-2018** because the surrounding months have too few orders to trend
-reliably (see section H of `sql/02_data_quality_checks.sql`). Apply the
-same restriction here, once, so every visual in the dashboard inherits it
-automatically instead of you having to remember it per chart:
+   If one is wrong, click its icon and choose the right type (**Replace
+   current** if asked). This matters: if `is_late` loads as text, the Late
+   Rate measure quietly returns the wrong answer instead of an error.
+5. **Close & Apply**.
+6. Repeat **Get data** → **Text/CSV** for the other three files. They're
+   small, so **Load** straight away is fine — just check the number columns
+   came in as numbers. Keep the default table names (the file names).
+7. Check the row count: open **Table view** (the grid icon on the left),
+   click `fact_orders`, and read the count at the bottom — it should say
+   **99,092 rows**.
 
-1. In the **Power Query Editor**, select the `fact_orders` query on the
-   left.
-2. Click the filter dropdown on the `order_date` column header → **Date
-   Filters** → **Between…** → `1/1/2017` and `8/31/2018` → **OK**.
-3. Confirm the step appears in the **Applied Steps** pane on the right
-   (e.g. "Filtered Rows") — this is what makes the restriction durable
-   rather than a one-off click.
-4. Click **Close & Apply**.
+Two things are already done for you in the SQL, so there's no need to redo
+them in Power BI:
 
-## 4. Add the seller comparison table
+- **The date window.** `fact_orders.csv` only contains Jan 2017 – Aug 2018
+  orders — the months either side have too few orders to trend (see section
+  H of `sql/02_data_quality_checks.sql`).
+- **The seller-level logic.** A single order can contain items from more
+  than one seller, so seller late rates and reviews can't be built
+  correctly from `fact_orders` alone. The SQL handles this (query 4a/4b in
+  `sql/04_analysis.sql`), and the two seller files are its output. They
+  don't need relationships to `fact_orders`; they feed their own visuals on
+  the Seller Health page.
 
-`fact_orders` is one row per **order**, but a single order can contain
-items from more than one seller (see `sql/03_fact_orders.sql` and query
-4a/4b in `sql/04_analysis.sql`). Seller-level GMV, late rate, and review
-score therefore can't be built correctly from `fact_orders` alone in
-DAX — the SQL already solves this correctly with `order_items` and
-window functions (`NTILE`, `RANK`), so the simplest, least error-prone
-option is to reuse that query result directly rather than rebuild the
-same logic a second time in DAX:
+## 3. Build the Date table
 
-1. **Get Data** → **PostgreSQL database** again → same server/database.
-2. Expand **Advanced options** → paste the entire **4a** query from
-   `sql/04_analysis.sql` (the one that returns `seller_group`,
-   `num_sellers`, `total_gmv`, `pct_of_gmv`, `late_rate_pct`,
-   `avg_review_score` and two `avg_seller_*` columns) into the **SQL
-   statement** box → **OK**.
-3. Name this query `seller_tier_comparison` in the Queries pane.
-4. Repeat once more for the **4b** query (top 20 sellers) and name it
-   `top_sellers`.
-5. **Close & Apply**. You now have two extra, independent tables — they
-   don't need a relationship to `fact_orders`; they're pre-aggregated and
-   used on their own visuals on the Seller Health page.
-
-(If you later want interactive drill-down from a seller to their
-individual orders, the next step up is importing `order_items` as a
-second fact table and relating it to both `fact_orders` (on `order_id`)
-and `sellers` (on `seller_id`). Not required for the four dashboard pages
-below — worth knowing as an extension if you want to push the project
-further.)
-
-## 5. Build the Date table
-
-Time intelligence (like GMV month-over-month) needs a proper date
-dimension — relating a measure directly to a text/date column on the fact
-table without one will make `DATEADD` and similar functions behave
-unpredictably.
+Time intelligence (like GMV month-over-month) needs a proper date table —
+without one, `DATEADD` and similar functions behave unpredictably.
 
 1. **Home** → **New Table** (not New Column) and enter:
    ```
@@ -128,19 +95,15 @@ unpredictably.
    check it in the relationship's properties if a visual later behaves
    oddly.
 
-## 6. DAX measures
+## 4. DAX measures
 
-Create these on the `fact_orders` table (**Home** → **New Measure**), not
-as calculated columns — measures recalculate per filter context (per
-page, per slicer selection), which is what a dashboard needs.
+Create these on the `fact_orders` table (**Home** → **New Measure**, one
+measure at a time), not as calculated columns — measures recalculate for
+whatever is selected on the page, which is what a dashboard needs.
 
-Two of them (`Total GMV`, `Total Orders`) exclude `canceled` and
-`unavailable` orders, matching the same exclusion applied in Q2–Q5 of
-`sql/04_analysis.sql` — canceled orders were never actually fulfilled, so
-counting their value would overstate real marketplace volume. Keeping the
-same filter in both places means the SQL and the dashboard numbers should
-match if you ever cross-check them, which is worth doing once as a sanity
-check.
+`Total GMV` and `Total Orders` exclude `canceled` and `unavailable` orders,
+matching Q2–Q4 in `sql/04_analysis.sql`: those orders were never fulfilled,
+so counting their value would overstate real marketplace volume.
 
 ```
 Total GMV =
@@ -169,6 +132,12 @@ DIVIDE(
 Avg Review Score =
 AVERAGE(fact_orders[review_score])
 
+Avg Delivery Days =
+AVERAGEX(
+    FILTER(fact_orders, NOT ISBLANK(fact_orders[delivered_date])),
+    DATEDIFF(fact_orders[order_date], fact_orders[delivered_date], DAY)
+)
+
 GMV MoM % =
 VAR CurrentGMV = [Total GMV]
 VAR PreviousGMV = CALCULATE([Total GMV], DATEADD('Date'[Date], -1, MONTH))
@@ -177,92 +146,73 @@ RETURN DIVIDE(CurrentGMV - PreviousGMV, PreviousGMV)
 
 Notes:
 - `Late Rate`'s denominator deliberately excludes blank `is_late` (orders
-  never delivered) rather than counting them as "not late" — same logic
-  as `WHERE is_late IS NOT NULL` in the SQL.
-- `AVERAGE` in DAX ignores blanks automatically, so `Avg Review Score`
-  correctly skips orders with no review without extra handling.
-- Format `Late Rate`, `GMV MoM %` as percentages and `Total GMV`/`AOV` as
-  currency (Real, R$) in the measure's formatting pane.
+  never delivered) rather than counting them as "not late" — same logic as
+  `WHERE is_late IS NOT NULL` in the SQL.
+- `AVERAGE` ignores blanks automatically, so `Avg Review Score` correctly
+  skips orders with no review.
+- `Avg Delivery Days` uses `AVERAGEX`, because `AVERAGE` only accepts a
+  plain column, not a calculation. The `FILTER` skips orders that were
+  never delivered — without it, a blank delivery date is treated as a date
+  in 1899 and wrecks the average.
+- Format `Late Rate` and `GMV MoM %` as percentages and `Total GMV`/`AOV`
+  as currency (Real, R$) in each measure's formatting options.
 
-## 7. Dashboard pages
+## 5. Dashboard pages
 
 Use **View → Themes** to pick one consistent theme before building pages,
 and keep KPI cards, fonts and colors consistent across all four — small
-thing, but it's what makes a dashboard look built by one person on
-purpose rather than four unrelated pages.
+thing, but it's what makes a dashboard look built by one person on purpose
+rather than four unrelated pages.
 
 ### Page 1 — Marketplace Overview
 
 - **KPI cards** (top row): `Total GMV`, `Total Orders`, `AOV`, `GMV MoM %`.
-  `GMV MoM %` compares the selected month with the month before, so it
-  only means something when one month is picked in the slicer below. With
+  `GMV MoM %` compares the selected month with the month before, so it only
+  means something when one month is picked in the slicer below. With
   nothing picked it compares the whole period with itself shifted by a
   month, which isn't meaningful — so either keep the slicer on one month,
   or show `GMV MoM %` in the line chart's tooltip instead of a card.
-- **Line chart**: `MonthName` from the `Date` table (sorted by
-  `YearMonth`) on the x-axis, `Total GMV` on the y-axis — the headline
-  trend line.
-- **Bar chart**: `Total GMV` by `customer_state` — where the volume is
-  coming from geographically.
+- **Line chart**: `MonthName` from the `Date` table (sorted by `YearMonth`)
+  on the x-axis, `Total GMV` on the y-axis — the headline trend line.
+- **Bar chart**: `Total GMV` by `customer_state` — where the volume comes
+  from geographically.
 - **Slicer**: `MonthName` (from `Date`) so a viewer can zoom into a
   specific period.
 
 ### Page 2 — Delivery & Customer Experience
 
-- **KPI cards**: `Late Rate`, `Avg Review Score`, and one more measure
-  (create it the same way as the others in Section 6):
-  ```
-  Avg Delivery Days =
-  AVERAGEX(
-      FILTER(fact_orders, NOT ISBLANK(fact_orders[delivered_date])),
-      DATEDIFF(fact_orders[order_date], fact_orders[delivered_date], DAY)
-  )
-  ```
-  `AVERAGEX` rather than `AVERAGE`, because DAX's `AVERAGE` only accepts a
-  plain column, not a calculation. The `FILTER` skips orders that were
-  never delivered — without it, a blank delivery date is treated as a date
-  in 1899 and wrecks the average.
-- **Bar chart**: `Avg Review Score` by `is_late` (Late vs on-time/early)
-  — this is the project's headline finding (Q1), so give it the most
+- **KPI cards**: `Late Rate`, `Avg Review Score`, `Avg Delivery Days`.
+- **Bar chart**: `Avg Review Score` by `is_late` (Late vs on-time/early) —
+  this is the project's headline finding (Q1), so give it the most
   prominent spot on this page. In the visual's filter pane, untick the
-  `(Blank)` value of `is_late`: those are orders that were never
-  delivered.
-- **Bar chart, sorted descending**: `Avg Delivery Days` by
-  `customer_state` (Q5) — add `Late Rate` as a secondary measure in the
-  tooltip so a viewer can see both together.
+  `(Blank)` value of `is_late`: those are orders that were never delivered.
+- **Bar chart, sorted descending**: `Avg Delivery Days` by `customer_state`
+  (Q5) — add `Late Rate` to the tooltip so a viewer can see both together,
+  which is exactly where the "slow isn't the same as late" finding shows.
 - **Slicer**: `customer_state`.
 
 ### Page 3 — Seller Health
 
-- **Table or clustered bar chart** from `top_sellers`: `seller_id`,
-  `seller_gmv`, `late_rate_pct`, `avg_review_score`, sorted by
-  `gmv_rank` — the top 20 sellers by GMV.
-- **Two small column charts** from `seller_tier_comparison`, side by
-  side: `seller_group` on the axis, with `late_rate_pct` in one and
+- **Table** from `top_sellers`: `seller_id`, `seller_gmv`, `late_rate_pct`,
+  `avg_review_score`, sorted by `gmv_rank` — the top 20 sellers by GMV.
+- **Two small column charts** from `seller_tier_comparison`, side by side:
+  `seller_group` on the axis, with `late_rate_pct` in one and
   `avg_review_score` in the other — the top-10%-vs-rest comparison (Q4),
   this page's headline visual. Two charts rather than one, because a
   percentage and a 1–5 star score on the same axis make the smaller one
   unreadable.
 - **Card**: `pct_of_gmv` from `seller_tier_comparison`, filtered to the
-  top-decile row, to state what share of GMV the top sellers represent.
+  top-10% row, to state what share of GMV the top sellers represent.
 
 ### Page 4 — Customers (optional)
 
-- Import one more native-SQL table the same way as Section 4, using the
-  Q3 query from `sql/04_analysis.sql` (repeat-purchase summary); call it
-  `customer_repeat_summary`.
-- **KPI card**: `repeat_customer_pct` from that table.
+- **KPI card**: `repeat_customer_pct` from `customer_repeat_summary`.
 - **Donut or stacked bar**: `one_time_customers` vs `repeat_customers`.
-- If you want a distribution rather than just the yes/no split, add a
-  `GROUP BY total_orders` variant of the Q3 query (how many customers
-  placed exactly 1, 2, 3+ orders) as a further native-SQL table and chart
-  it as a simple column chart.
 
-## 8. Before you call it done
+## 6. Before you call it done
 
-- Check your cards against the numbers the SQL produced on the Kaggle
-  data. With no slicer selected (except where noted), the dashboard
-  should show exactly:
+- Check your cards against the numbers the SQL produced. With no slicer
+  selected (except where noted), the dashboard should show exactly:
 
   | Page | Visual | Should show |
   |---|---|---|
@@ -270,28 +220,45 @@ purpose rather than four unrelated pages.
   | 1 | Total Orders | 97,910 |
   | 1 | AOV | R$160.18 |
   | 1 | GMV MoM % (slicer on Aug 2018) | −4.1% |
+  | 1 | Total GMV (slicer on Nov 2017) | R$1,172,191.68 |
   | 2 | Late Rate | 6.8% |
   | 2 | Avg Review Score | 4.09 |
   | 2 | Avg Delivery Days | 12.5 |
+  | 2 | Avg Review Score, Late / on-time bars | 2.27 / 4.29 |
   | 3 | pct_of_gmv, top 10% of sellers | 66.5 |
   | 4 | repeat_customer_pct | 3.0 |
 
-  If a card is off, the cause is almost always a filter applied in one
-  place and not the other: the Jan 2017–Aug 2018 window (Section 3) or the
-  `canceled`/`unavailable` exclusion (Section 6).
+  If a card is off, the cause is almost always one of two things: a column
+  loaded with the wrong type (Section 2, step 4 — check `is_late` and the
+  dates first), or the `canceled`/`unavailable` exclusion typed differently
+  in a measure (Section 4).
 - Click through every page with a slicer applied and confirm the numbers
   move sensibly. A slicer only affects its own page unless you sync it
   across pages (**View → Sync slicers**).
-- Cross-check one number by hand: pick a single month's `Total GMV` card
-  on Page 1 and compare it to the same month's `gmv` value from the Q2
-  query in `sql/04_analysis.sql` run directly in pgAdmin. They should
-  match exactly — if they don't, the mismatch is almost always the
-  `canceled`/`unavailable` filter being applied in one place and not the
-  other.
 - Take screenshots of all four pages for the `README.md` placeholders.
-- Save the `.pbix` file into this repo (e.g. `dashboard/marketplace_dashboard.pbix`)
-  so the finished file, not just this guide, is part of what a reviewer
-  can open.
+- Save the `.pbix` file into this project (e.g.
+  `dashboard/marketplace_dashboard.pbix`) so the finished file, not just
+  this guide, is part of what a reviewer can open. The `.pbix` stores its
+  own copy of the data, so it opens without the CSV files.
+
+## 7. Optional: connect straight to PostgreSQL instead
+
+If you later install PostgreSQL and load the data with `sql/01`–`03`, you
+can swap the files for a live connection — worth knowing, since that's how
+BI teams usually work:
+
+1. **Get data** → **PostgreSQL database** → **Server** `localhost`,
+   **Database** `olist_marketplace` → **Import** mode → sign in with your
+   PostgreSQL username and password.
+2. In **Navigator**, tick `fact_orders` → **Transform Data**. The view holds
+   every order, so filter `order_date` to between 1/1/2017 and 8/31/2018
+   (**Date Filters** → **Between…**) before **Close & Apply**.
+3. For the three small tables, use **Get data** → **PostgreSQL database**
+   → **Advanced options**, and paste query 4a, 4b or Q3 from
+   `sql/04_analysis.sql` into the **SQL statement** box.
+
+Current Power BI Desktop includes the PostgreSQL driver (Npgsql), so no
+separate install is needed.
 
 Sources:
 - [Power Query PostgreSQL connector – Microsoft Learn](https://learn.microsoft.com/en-us/power-query/connectors/postgresql)
