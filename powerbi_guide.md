@@ -16,9 +16,9 @@ order; later steps assume the model built in earlier ones.
   - `top_sellers.csv` — the top 20 sellers by GMV (query 4b)
   - `customer_repeat_summary.csv` — repeat-purchase summary (query Q3)
 
-  They're not in the GitHub repo (`.gitignore` excludes data files). To
-  recreate them, run `sql/01`–`03` in pgAdmin, then follow the export steps
-  at the top of `sql/05_export_for_powerbi.sql`.
+  They're included in the repo. To regenerate them from PostgreSQL, run
+  `sql/01`–`03` in pgAdmin, then follow the export steps at the top of
+  `sql/05_export_for_powerbi.sql`.
 
 ## 2. Load the four data files
 
@@ -235,7 +235,8 @@ rather than four unrelated pages.
 - Click through every page with a slicer applied and confirm the numbers
   move sensibly. A slicer only affects its own page unless you sync it
   across pages (**View → Sync slicers**).
-- Take screenshots of all four pages for the `README.md` placeholders.
+- Take screenshots of all four pages. They go in the README's Charts
+  section, in place of (or above) the static charts there.
 - Save the `.pbix` file into this project (e.g.
   `dashboard/marketplace_dashboard.pbix`) so the finished file, not just
   this guide, is part of what a reviewer can open. The `.pbix` stores its

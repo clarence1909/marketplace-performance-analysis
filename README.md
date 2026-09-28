@@ -137,14 +137,33 @@ didn't:
   changed the late rate of 821 of 3,029 sellers, by up to 38 percentage
   points. Q4 now collapses items to one row per seller per order first.
 
-## Dashboard
+## Charts
 
-*(add screenshots here once built — see `powerbi_guide.md` section 6)*
+*Static charts of the key results, made with Python
+(`charts/make_charts.py`) from the data files in `powerbi_data/` — every
+number matches `sql/04_analysis.sql`. The interactive Power BI dashboard
+is in progress (see `powerbi_guide.md`); its screenshots will go here once
+it's built.*
 
-- `![Marketplace Overview](dashboard/screenshots/01_overview.png)`
-- `![Delivery & Customer Experience](dashboard/screenshots/02_delivery.png)`
-- `![Seller Health](dashboard/screenshots/03_sellers.png)`
-- `![Customers](dashboard/screenshots/04_customers.png)`
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="charts/01_gmv_by_month_dark.png">
+  <img alt="Line chart of monthly GMV: R$137k in Jan 2017, a Black Friday peak of R$1.17M in Nov 2017, then between R$0.98M and R$1.16M a month through 2018, ending at R$997k in Aug 2018." src="charts/01_gmv_by_month_light.png">
+</picture>
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="charts/02_reviews_late_vs_on_time_dark.png">
+  <img alt="Bar charts: late orders average 2.27 review stars vs 4.29 for on-time orders, and 62.3% of late orders score 1-2 stars vs 9.2% of on-time orders." src="charts/02_reviews_late_vs_on_time_light.png">
+</picture>
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="charts/03_state_delivery_vs_late_dark.png">
+  <img alt="Scatter plot of customer states by average delivery days and late rate. The slowest states are Roraima (29.9 days), Amapa and Amazonas; Amapa and Amazonas are late only about 3% of the time. Alagoas (21.5%), Maranhao (17.5%) and Sergipe (15.4%) have the highest late rates, against 6.8% nationally, and Rio de Janeiro accounts for 22.9% of all late orders." src="charts/03_state_delivery_vs_late_light.png">
+</picture>
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="charts/04_top_sellers_vs_rest_dark.png">
+  <img alt="The top 10% of sellers by GMV hold 66.5% of GMV; 6.9% of their orders arrive late vs 6.4% for the other 90% of sellers." src="charts/04_top_sellers_vs_rest_light.png">
+</picture>
 
 ## How to reproduce this
 
@@ -160,9 +179,12 @@ didn't:
 6. Run `sql/04_analysis.sql` and compare with the "Result" comment under
    each query — your numbers should match exactly.
 7. Run `sql/05_export_for_powerbi.sql` to export the four data files
-   Power BI uses (steps at the top of the file).
+   Power BI uses (steps at the top of the file) — or skip this and use
+   the copies already in `powerbi_data/`.
 8. Follow `powerbi_guide.md` to build the dashboard; section 6 lists the
    numbers each page should show.
+9. Optional: regenerate the README charts with
+   `python charts/make_charts.py` (needs pandas and matplotlib).
 
 ## Repo structure
 
@@ -173,7 +195,8 @@ sql/
   03_fact_orders.sql
   04_analysis.sql
   05_export_for_powerbi.sql
-powerbi_data/        (the 4 exported data files - not committed, regenerate with sql/05)
+powerbi_data/        (the 4 data files the dashboard is built from, exported by sql/05)
+charts/              (the README charts and make_charts.py, which draws them)
 powerbi_guide.md
 insight_summary.md
 cv_bullets.md
@@ -184,4 +207,11 @@ README.md
 ## Tools
 
 PostgreSQL + pgAdmin (data prep, analysis) · Power BI Desktop (dashboard,
-DAX) · GitHub (this repo)
+DAX) · Python with pandas and matplotlib (README charts) · GitHub (this repo)
+
+## Data and license
+
+Data: [Brazilian E-Commerce Public Dataset by
+Olist](https://www.kaggle.com/datasets/olistbr/brazilian-ecommerce),
+released under [CC BY-NC-SA 4.0](https://creativecommons.org/licenses/by-nc-sa/4.0/).
+The derived files in `powerbi_data/` are shared under the same license.

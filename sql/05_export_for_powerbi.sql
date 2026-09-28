@@ -9,8 +9,8 @@
 --   hand-off point, and keeping it in the repo means the files can always
 --   be regenerated exactly.
 --
--- The four files (saved in powerbi_data/, which .gitignore keeps out of the
--- repo because the data can be regenerated):
+-- The four files (saved in powerbi_data/ and kept in the repo, so the
+-- dashboard can be built without a database; this script regenerates them):
 --   1. fact_orders.csv              -- the query below
 --   2. seller_tier_comparison.csv   -- query 4a in 04_analysis.sql
 --   3. top_sellers.csv              -- query 4b in 04_analysis.sql
