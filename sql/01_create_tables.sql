@@ -1,11 +1,9 @@
--- ============================================================================
+
 -- 01_create_tables.sql
 -- Marketplace Performance & Seller Health Analysis (Olist)
--- ============================================================================
 -- Purpose
 --   Create staging tables that mirror the Olist Kaggle CSV files one-to-one:
 --   same columns, same order, sensible PostgreSQL types. Nothing more.
---
 -- Why no PRIMARY KEY / FOREIGN KEY constraints here
 --   This is real, public data we haven't inspected yet. If we declare PKs/FKs
 --   before we know whether the raw files actually respect them, a single bad
@@ -15,7 +13,7 @@
 --   test for duplicates and orphan keys and quantify them. If you want to add
 --   constraints afterwards for a stricter build, each table's intended grain
 --   (its natural key) is noted in a comment above it.
--- ============================================================================
+
 
 DROP TABLE IF EXISTS order_reviews CASCADE;
 DROP TABLE IF EXISTS order_payments CASCADE;
@@ -26,7 +24,6 @@ DROP TABLE IF EXISTS product_category_name_translation CASCADE;
 DROP TABLE IF EXISTS sellers CASCADE;
 DROP TABLE IF EXISTS customers CASCADE;
 
--- ----------------------------------------------------------------------------
 -- 1. customers  (source file: olist_customers_dataset.csv)
 -- Intended grain: one row per customer_id.
 -- IMPORTANT: customer_id is generated PER ORDER, not per person -- the same
@@ -34,7 +31,7 @@ DROP TABLE IF EXISTS customers CASCADE;
 -- is the column that actually identifies a returning person. See the
 -- granularity checks in 02_data_quality_checks.sql before using either
 -- column to count "customers".
--- ----------------------------------------------------------------------------
+-- 
 CREATE TABLE customers (
     customer_id               VARCHAR(32),
     customer_unique_id        VARCHAR(32),
@@ -45,10 +42,8 @@ CREATE TABLE customers (
     customer_state              CHAR(2)
 );
 
--- ----------------------------------------------------------------------------
 -- 2. sellers  (source file: olist_sellers_dataset.csv)
 -- Intended grain: one row per seller_id.
--- ----------------------------------------------------------------------------
 CREATE TABLE sellers (
     seller_id               VARCHAR(32),
     seller_zip_code_prefix  CHAR(5),      -- text, not INT -- same leading-zero reason as customers
@@ -56,22 +51,18 @@ CREATE TABLE sellers (
     seller_state               CHAR(2)
 );
 
--- ----------------------------------------------------------------------------
 -- 3. product_category_name_translation  (source file: product_category_name_translation.csv)
 -- Intended grain: one row per product_category_name (Portuguese -> English).
--- ----------------------------------------------------------------------------
 CREATE TABLE product_category_name_translation (
     product_category_name          VARCHAR(100),
     product_category_name_english  VARCHAR(100)
 );
 
--- ----------------------------------------------------------------------------
 -- 4. products  (source file: olist_products_dataset.csv)
 -- Intended grain: one row per product_id.
 -- Note: "product_name_lenght" / "product_description_lenght" are misspelled
 -- in the original Kaggle file (missing the 'g'). Kept as-is here so the
 -- column names line up exactly with the CSV header for import.
--- ----------------------------------------------------------------------------
 CREATE TABLE products (
     product_id                   VARCHAR(32),
     product_category_name        VARCHAR(100),
@@ -84,11 +75,9 @@ CREATE TABLE products (
     product_width_cm               INT
 );
 
--- ----------------------------------------------------------------------------
 -- 5. orders  (source file: olist_orders_dataset.csv)
 -- Intended grain: one row per order_id. This is the anchor table everything
 -- else hangs off.
--- ----------------------------------------------------------------------------
 CREATE TABLE orders (
     order_id                        VARCHAR(32),
     customer_id                     VARCHAR(32),
@@ -100,13 +89,13 @@ CREATE TABLE orders (
     order_estimated_delivery_date   TIMESTAMP
 );
 
--- ----------------------------------------------------------------------------
+
 -- 6. order_items  (source file: olist_order_items_dataset.csv)
 -- Intended grain: one row per ITEM within an order, not per order. A single
 -- order_id will appear multiple times here whenever the order has more than
 -- one line item. Never join this straight into an order-level analysis
 -- without aggregating first (see 03_fact_orders.sql).
--- ----------------------------------------------------------------------------
+
 CREATE TABLE order_items (
     order_id              VARCHAR(32),
     order_item_id          INT,             -- 1, 2, 3... position of the item within the order
@@ -117,14 +106,14 @@ CREATE TABLE order_items (
     freight_value             NUMERIC(10,2)
 );
 
--- ----------------------------------------------------------------------------
+
 -- 7. order_payments  (source file: olist_order_payments_dataset.csv)
 -- Intended grain: one row per payment "leg" within an order. An order paid
 -- with a voucher + a credit card, for example, gets two rows here with
 -- different payment_sequential values. Never SUM(payment_value) into an
 -- order-level GMV figure -- that double-counts split payments; GMV comes
 -- from order_items instead (price + freight), see 03_fact_orders.sql.
--- ----------------------------------------------------------------------------
+
 CREATE TABLE order_payments (
     order_id                VARCHAR(32),
     payment_sequential        INT,
@@ -133,13 +122,13 @@ CREATE TABLE order_payments (
     payment_value                 NUMERIC(10,2)
 );
 
--- ----------------------------------------------------------------------------
+
 -- 8. order_reviews  (source file: olist_order_reviews_dataset.csv)
 -- Intended grain: one row per review. The vast majority of orders have
 -- exactly one review, but 02_data_quality_checks.sql tests for the small
 -- number that have more than one (e.g. a customer who was re-surveyed).
 -- review_id is NOT guaranteed unique in the raw file.
--- ----------------------------------------------------------------------------
+
 CREATE TABLE order_reviews (
     review_id                  VARCHAR(32),
     order_id                     VARCHAR(32),
@@ -151,9 +140,9 @@ CREATE TABLE order_reviews (
 );
 
 
--- ============================================================================
+
 -- Importing the CSVs in pgAdmin
--- ============================================================================
+
 -- Do this once you've downloaded the "Brazilian E-Commerce Public Dataset by
 -- Olist" from Kaggle and unzipped it. You should have these files (the
 -- geolocation file is not used in this project -- ignore it):
@@ -196,4 +185,4 @@ CREATE TABLE order_reviews (
 --      since there are no FK constraints yet, but it keeps the order logical
 --      if you're following along table by table.
 --   7. Move on to 02_data_quality_checks.sql before building anything else.
--- ============================================================================
+
