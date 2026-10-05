@@ -65,99 +65,88 @@ them in Power BI:
   don't need relationships to `fact_orders`; they feed their own visuals on
   the Seller Health page.
 
-## 3. Build the Date table
+ ## 3. DAX measures
 
-Time intelligence (like GMV month-over-month) needs a proper date table —
-without one, `DATEADD` and similar functions behave unpredictably.
+Build these in Power BI on the `fact_orders` table as **measures**, not calculated columns. Measures recalculate for whatever is selected on the page, which is what a dashboard needs.
 
-1. **Home** → **New Table** (not New Column) and enter:
-   ```
-   Date = CALENDAR(DATE(2017,1,1), DATE(2018,8,31))
-   ```
-2. With the new `Date` table selected, add four columns — click **New
-   Column** once for each line:
-   ```
-   Year = YEAR('Date'[Date])
-   MonthNumber = MONTH('Date'[Date])
-   YearMonth = YEAR('Date'[Date]) * 100 + MONTH('Date'[Date])
-   MonthName = FORMAT('Date'[Date], "MMM YYYY")
-   ```
-3. Click the `MonthName` column → **Column tools** → **Sort by column** →
-   `YearMonth`. Without this, Power BI sorts month names alphabetically
-   (Apr 2017, Apr 2018, Aug 2017, ...), which scrambles every chart and
-   slicer that uses them.
-4. Go to **Model view**. Right-click the `Date` table → **Mark as date
-   table** → choose the `Date` column → **OK**.
-5. Still in Model view, drag from `Date[Date]` to `fact_orders[order_date]`
-   to create the relationship. Confirm it's **one-to-many** (one row in
-   Date per day, many orders per day) with a single-direction filter from
-   `Date` → `fact_orders`. Power BI usually infers this correctly, but
-   check it in the relationship's properties if a visual later behaves
-   oddly.
+`Total GMV` and `Total Orders` exclude `canceled` and `unavailable` orders, matching Q2–Q4 in `sql/04_analysis.sql`: those orders were never fulfilled, so counting their value would overstate real marketplace volume.
 
-## 4. DAX measures
+**How to add each measure**
 
-Create these on the `fact_orders` table (**Home** → **New Measure**, one
-measure at a time), not as calculated columns — measures recalculate for
-whatever is selected on the page, which is what a dashboard needs.
+Power BI accepts one measure at a time. Pasting several at once, or pasting onto leftover text, gives the error "The syntax for 'Total' is incorrect." For every measure below:
 
-`Total GMV` and `Total Orders` exclude `canceled` and `unavailable` orders,
-matching Q2–Q4 in `sql/04_analysis.sql`: those orders were never fulfilled,
-so counting their value would overstate real marketplace volume.
+1. Click the `fact_orders` table in the Data pane.
+2. Click **New measure** (Home tab).
+3. Click in the formula bar, press **Ctrl+A**, then **Delete**, so the bar is empty.
+4. Paste one block only and press **Enter**.
+
+Create them in the order shown, since later measures refer to earlier ones.
+
+Go to Modeling → **New table** (not New measure) and paste:
 
 ```
-Total GMV =
-CALCULATE(
-    SUM(fact_orders[gmv]),
-    fact_orders[order_status] <> "canceled",
-    fact_orders[order_status] <> "unavailable"
-)
-
-Total Orders =
-CALCULATE(
-    DISTINCTCOUNT(fact_orders[order_id]),
-    fact_orders[order_status] <> "canceled",
-    fact_orders[order_status] <> "unavailable"
-)
-
-AOV =
-DIVIDE([Total GMV], [Total Orders])
-
-Late Rate =
-DIVIDE(
-    CALCULATE(COUNTROWS(fact_orders), fact_orders[is_late] = TRUE()),
-    CALCULATE(COUNTROWS(fact_orders), NOT ISBLANK(fact_orders[is_late]))
-)
-
-Avg Review Score =
-AVERAGE(fact_orders[review_score])
-
-Avg Delivery Days =
-AVERAGEX(
-    FILTER(fact_orders, NOT ISBLANK(fact_orders[delivered_date])),
-    DATEDIFF(fact_orders[order_date], fact_orders[delivered_date], DAY)
-)
-
-GMV MoM % =
-VAR CurrentGMV = [Total GMV]
-VAR PreviousGMV = CALCULATE([Total GMV], DATEADD('Date'[Date], -1, MONTH))
-RETURN DIVIDE(CurrentGMV - PreviousGMV, PreviousGMV)
+Date = CALENDAR(DATE(YEAR(MIN(fact_orders[order_date])), 1, 1), DATE(YEAR(MAX(fact_orders[order_date])), 12, 31))
 ```
 
-Notes:
-- `Late Rate`'s denominator deliberately excludes blank `is_late` (orders
-  never delivered) rather than counting them as "not late" — same logic as
-  `WHERE is_late IS NOT NULL` in the SQL.
-- `AVERAGE` ignores blanks automatically, so `Avg Review Score` correctly
-  skips orders with no review.
-- `Avg Delivery Days` uses `AVERAGEX`, because `AVERAGE` only accepts a
-  plain column, not a calculation. The `FILTER` skips orders that were
-  never delivered — without it, a blank delivery date is treated as a date
-  in 1899 and wrecks the average.
-- Format `Late Rate` and `GMV MoM %` as percentages and `Total GMV`/`AOV`
-  as currency (Real, R$) in each measure's formatting options.
+Then select it, go to Table tools → **Mark as date table** and choose the `Date` column. In Model view, drag `Date[Date]` onto `fact_orders[order_date]`. Use `Date[Date]` (not `fact_orders[order_date]`) on visual axes, or `GMV MoM %` returns blanks.
 
-## 5. Dashboard pages
+**Measure 1: Total GMV**
+
+```
+Total GMV = CALCULATE(SUM(fact_orders[gmv]), fact_orders[order_status] <> "canceled", fact_orders[order_status] <> "unavailable")
+```
+
+**Measure 2: Total Orders**
+
+```
+Total Orders = CALCULATE(DISTINCTCOUNT(fact_orders[order_id]), fact_orders[order_status] <> "canceled", fact_orders[order_status] <> "unavailable")
+```
+
+**Measure 3: AOV**
+
+```
+AOV = DIVIDE([Total GMV], [Total Orders])
+```
+
+**Measure 4: Late Rate**
+
+```
+Late Rate = DIVIDE(CALCULATE(DISTINCTCOUNT(fact_orders[order_id]), fact_orders[is_late] = TRUE()), CALCULATE(DISTINCTCOUNT(fact_orders[order_id]), NOT ISBLANK(fact_orders[is_late])))
+```
+
+**Measure 5: Avg Review Score**
+
+```
+Avg Review Score = AVERAGE(fact_orders[review_score])
+```
+
+**Measure 6: Avg Delivery Days**
+
+```
+Avg Delivery Days = AVERAGEX(FILTER(fact_orders, NOT ISBLANK(fact_orders[delivered_date])), DATEDIFF(fact_orders[order_date], fact_orders[delivered_date], DAY))
+```
+
+**Measure 7: GMV MoM %**
+
+```
+GMV MoM % = VAR CurrentGMV = [Total GMV] VAR PreviousGMV = CALCULATE([Total GMV], DATEADD('Date'[Date], -1, MONTH)) RETURN DIVIDE(CurrentGMV - PreviousGMV, PreviousGMV)
+```
+
+**Formatting**
+
+Select each measure, then use the Measure tools tab:
+
+* `Late Rate` and `GMV MoM %`: percentage
+* `Total GMV` and `AOV`: currency, Real (R$)
+
+**Notes**
+
+* `Late Rate`'s denominator deliberately excludes blank `is_late` (orders never delivered) rather than counting them as "not late", the same logic as `WHERE is_late IS NOT NULL` in the SQL. Keep `ISBLANK` here: `<> BLANK()` would silently drop every on-time order.
+* `AVERAGE` ignores blanks automatically, so `Avg Review Score` correctly skips orders with no review.
+* `Avg Delivery Days` uses `AVERAGEX` because `AVERAGE` only accepts a plain column. The `FILTER` skips orders that were never delivered; without it, a blank delivery date is treated as a date in 1899 and wrecks the average.
+* `fact_orders` has one row per order, so `DISTINCTCOUNT(order_id)` and `COUNTROWS` give the same result in `Late Rate`. `DISTINCTCOUNT` is used to stay correct if the table is ever rebuilt at item level.
+
+## 4. Dashboard pages
 
 Use **View → Themes** to pick one consistent theme before building pages,
 and keep KPI cards, fonts and colors consistent across all four — small
