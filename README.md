@@ -2,9 +2,7 @@
 
 A portfolio project analyzing the [Brazilian E-Commerce Public Dataset by
 Olist](https://www.kaggle.com/datasets/olistbr/brazilian-ecommerce)
-(99,441 orders, 2016–2018) to answer marketplace-health questions in the
-style of a Business Intelligence Executive role — SQL for data
-preparation and analysis, Power BI for the dashboard.
+(99,441 orders, 2016–2018) 
 
 Built to demonstrate: intermediate SQL (CTEs, window functions),
 explicit handling of data granularity, data-integrity checking, DAX and
@@ -16,10 +14,7 @@ rather than just charts.
 Olist is a Brazilian multi-seller marketplace — structurally close to a
 marketplace like Shopee (many sellers, one platform, shared logistics and
 review system), which made it a better fit for practicing marketplace
-analytics than a single-retailer dataset. I have no e-commerce work
-experience yet (background is clinical data analysis and biotech); this
-project exists to close that specific gap with a real, messy, public
-dataset rather than a cleaned-up tutorial one.
+analytics than a single-retailer dataset. 
 
 ## Business questions
 
