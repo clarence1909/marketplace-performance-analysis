@@ -1,7 +1,7 @@
--- ============================================================================
+
 -- 05_export_for_powerbi.sql
 -- Marketplace Performance & Seller Health Analysis (Olist)
--- ============================================================================
+
 -- Purpose
 --   Produce the four data files the Power BI dashboard is built from, so the
 --   dashboard can be built without a live database connection. Every number
@@ -26,10 +26,10 @@
 --   Or, from psql, wrap the query as:
 --      \copy (<query>) TO 'fact_orders.csv' WITH (FORMAT csv, HEADER true)
 --      (note: \copy needs the whole command on one line)
--- ============================================================================
 
 
--- ----------------------------------------------------------------------------
+
+
 -- 1. fact_orders.csv
 -- One row per order, already limited to the Jan 2017 - Aug 2018 analysis
 -- window (see section H of 02_data_quality_checks.sql), so Power BI doesn't
@@ -42,7 +42,7 @@
 -- order was never delivered.
 --
 -- Expected on the Kaggle data: 99,092 rows.
--- ----------------------------------------------------------------------------
+
 SELECT
     order_id,
     customer_unique_id,
