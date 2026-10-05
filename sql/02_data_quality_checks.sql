@@ -1,7 +1,7 @@
--- ============================================================================
+
 -- 02_data_quality_checks.sql
 -- Marketplace Performance & Seller Health Analysis (Olist)
--- ============================================================================
+
 -- Purpose
 --   Run these BEFORE trusting anything downstream. Each block below tests one
 --   thing and says why it matters. Run the whole file top to bottom in
@@ -28,16 +28,16 @@
 --   H  Edge months are tiny: Sep 2016 = 4 orders, Oct 2016 = 324,
 --      Nov 2016 = 0, Dec 2016 = 1, Sep 2018 = 16, Oct 2018 = 4 -- versus
 --      6,167 to 7,269 orders a month through 2018.
--- ============================================================================
 
 
--- ============================================================================
+
+
 -- A. ROW COUNTS
 -- What it tests: the basic shape of the data -- did every CSV actually load?
 -- A table with 0 rows, or a count wildly different from what Kaggle's
 -- dataset card advertises (roughly 99k orders), means the import step failed
 -- silently for that table.
--- ============================================================================
+
 SELECT 'customers' AS table_name, COUNT(*) AS row_count FROM customers
 UNION ALL SELECT 'sellers', COUNT(*) FROM sellers
 UNION ALL SELECT 'product_category_name_translation', COUNT(*) FROM product_category_name_translation
@@ -49,13 +49,13 @@ UNION ALL SELECT 'order_reviews', COUNT(*) FROM order_reviews
 ORDER BY table_name;
 
 
--- ============================================================================
+
 -- B. NULLS IN COLUMNS THE ANALYSIS DEPENDS ON
 -- What it tests: whether the columns we're about to build measures on
 -- (dates, ids, prices) are ever missing. A NULL order_purchase_timestamp
 -- would silently vanish from any month-by-month trend; a NULL price would
 -- understate GMV.
--- ============================================================================
+
 SELECT
     COUNT(*) FILTER (WHERE order_id IS NULL)                       AS null_order_id,
     COUNT(*) FILTER (WHERE customer_id IS NULL)                    AS null_customer_id,
@@ -79,13 +79,13 @@ SELECT
 FROM customers;
 
 
--- ============================================================================
+
 -- C. DUPLICATE CHECKS ON EACH TABLE'S INTENDED GRAIN
 -- What it tests: whether the natural key we assumed for each table (see the
 -- comments in 01_create_tables.sql) is actually unique. If customer_id
 -- repeats in `customers`, for instance, a plain join would fan out and
 -- silently inflate every downstream count.
--- ============================================================================
+
 
 -- C1. customers: customer_id should be unique
 SELECT customer_id, COUNT(*) AS n
@@ -130,14 +130,14 @@ FROM (
 ) t;
 
 
--- ============================================================================
+
 -- D. GRANULARITY CHECKS
 -- What it tests: how many child rows each order actually has in the
 -- item / payment / review tables. This is the single most important check
 -- in this file -- it's the difference between reporting real numbers and
 -- silently double-counting. The results tell us exactly how to aggregate
 -- in 03_fact_orders.sql.
--- ============================================================================
+
 
 -- D1. items per order (order_items is item-level, not order-level)
 SELECT items_per_order, COUNT(*) AS num_orders
@@ -203,13 +203,13 @@ GROUP BY o.order_status
 ORDER BY orders_with_no_items DESC;
 
 
--- ============================================================================
+
 -- E. ORPHAN-KEY CHECKS
 -- What it tests: referential integrity that isn't enforced by a constraint
 -- (see 01_create_tables.sql for why). An order_item pointing at a seller_id
 -- that doesn't exist in `sellers` would silently disappear from any join,
 -- understating seller-level GMV without any error being raised.
--- ============================================================================
+
 
 -- E1. order_items -> orders
 SELECT COUNT(*) AS orphan_order_items_missing_order
@@ -258,12 +258,12 @@ WHERE p.product_category_name IS NOT NULL
   AND t.product_category_name IS NULL;
 
 
--- ============================================================================
+
 -- F. DATE LOGIC CHECKS
 -- What it tests: whether the delivery dates are internally consistent. These
 -- feed directly into the is_late flag in 03_fact_orders.sql, so a bug here
 -- becomes a bug in the headline finding (Q1).
--- ============================================================================
+
 
 -- F1. Orders "delivered" before they were purchased -- should be zero.
 SELECT COUNT(*) AS delivered_before_purchase
@@ -286,13 +286,13 @@ WHERE order_delivered_customer_date IS NOT NULL
 GROUP BY order_status;
 
 
--- ============================================================================
+
 -- G. ORDER STATUS MIX
 -- What it tests: what proportion of orders are canceled / unavailable /
 -- still in flight. This decides whether those statuses should be excluded
 -- from GMV and delivery metrics in 03/04 (canceled orders were never
 -- fulfilled, so counting their GMV would overstate real marketplace volume).
--- ============================================================================
+
 SELECT
     order_status,
     COUNT(*)                                  AS num_orders,
@@ -303,7 +303,7 @@ GROUP BY order_status
 ORDER BY num_orders DESC;
 
 
--- ============================================================================
+
 -- H. MONTHLY ORDER VOLUME -- JUSTIFIES THE Jan 2017-Aug 2018 ANALYSIS WINDOW
 -- What it tests: order volume by calendar month across the full history.
 -- Olist's data technically starts in Sep 2016 and runs to Oct 2018, but the
@@ -315,7 +315,7 @@ ORDER BY num_orders DESC;
 -- those months would show misleading spikes/dips driven by tiny sample
 -- sizes, not real marketplace behaviour. That's why every query in
 -- 04_analysis.sql and the Power BI model filter to Jan 2017-Aug 2018.
--- ============================================================================
+
 SELECT
     DATE_TRUNC('month', order_purchase_timestamp)::DATE AS order_month,
     COUNT(*)                                              AS num_orders
