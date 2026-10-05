@@ -1,7 +1,7 @@
--- ============================================================================
+
 -- 04_analysis.sql
 -- Marketplace Performance & Seller Health Analysis (Olist)
--- ============================================================================
+
 -- One query per business question, built on top of fact_orders
 -- (03_fact_orders.sql). All queries restrict to the Jan 2017-Aug 2018
 -- window -- see section H of 02_data_quality_checks.sql for why.
@@ -9,12 +9,12 @@
 -- The "Result" comment under each query is its actual output on the Kaggle
 -- dataset, copied from the query results. Run the file yourself and check
 -- your numbers match -- if they don't, something differs in your load.
--- ============================================================================
 
 
--- ============================================================================
+
+
 -- Q1. Do late deliveries lower review scores?  (headline insight)
--- ============================================================================
+
 -- Only delivered orders can be judged late or on-time (is_late IS NULL for
 -- anything else -- see 03_fact_orders.sql), so we filter those out rather
 -- than letting them dilute the average. pct_1_or_2_stars counts orders
@@ -96,9 +96,9 @@ ORDER BY gap;
 -- explained by where customers live.
 
 
--- ============================================================================
+
 -- Q2. How is GMV trending month over month?
--- ============================================================================
+
 -- order_status filter: canceled/unavailable orders were never fulfilled, so
 -- they're excluded from a revenue-style trend (they're still visible in
 -- fact_orders for anyone who wants a funnel view).
@@ -141,9 +141,9 @@ LIMIT 5;
 -- double the next-busiest day (25 Nov 2017, 499).
 
 
--- ============================================================================
+
 -- Q3. How many customers make a repeat purchase?  (by customer_unique_id)
--- ============================================================================
+
 -- customer_id is per-order; customer_unique_id is the real person (see
 -- check D4 in 02_data_quality_checks.sql). ROW_NUMBER numbers each person's
 -- orders in date order, so MAX(order_sequence) per person tells us how many
@@ -179,10 +179,10 @@ FROM customer_summary;
 -- placed more than one order; 91,832 bought once.
 
 
--- ============================================================================
+
 -- Q4. Which sellers drive GMV, and how do top sellers compare with the rest
 --     on late rate and review score?
--- ============================================================================
+
 -- fact_orders is one row per ORDER, but a single order can include items
 -- from more than one seller (1,278 orders on the Kaggle data), so
 -- seller-level analysis goes back to order_items.
@@ -310,9 +310,9 @@ ORDER BY gmv_rank
 LIMIT 20;
 
 
--- ============================================================================
+
 -- Q5. Which customer states have the longest delivery times?
--- ============================================================================
+
 -- The national_* columns use SUM(...) OVER () on top of the GROUP BY
 -- aggregates, so every row carries the order-weighted national figure to
 -- compare against. late_orders / pct_of_all_late_orders show where late
