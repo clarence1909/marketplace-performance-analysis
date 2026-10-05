@@ -198,7 +198,7 @@ rather than four unrelated pages.
 - **KPI card**: `repeat_customer_pct` from `customer_repeat_summary`.
 - **Donut or stacked bar**: `one_time_customers` vs `repeat_customers`.
 
-## 6. Before you call it done
+## 5. Before you call it done
 
 - Check your cards against the numbers the SQL produced. With no slicer
   selected (except where noted), the dashboard should show exactly:
@@ -231,7 +231,7 @@ rather than four unrelated pages.
   this guide, is part of what a reviewer can open. The `.pbix` stores its
   own copy of the data, so it opens without the CSV files.
 
-## 7. Optional: connect straight to PostgreSQL instead
+## 6. Optional: connect straight to PostgreSQL instead
 
 If you later install PostgreSQL and load the data with `sql/01`–`03`, you
 can swap the files for a live connection — worth knowing, since that's how
