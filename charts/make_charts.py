@@ -45,7 +45,7 @@ def half_up(x, places=1):
     return float(Decimal(str(x)).quantize(q, rounding=ROUND_HALF_UP))
 
 
-# ---------------------------------------------------------------- data
+#  data
 f = pd.read_csv(DATA / "fact_orders.csv", dtype={"is_late": "string"},
                 parse_dates=["order_date", "delivered_date"])
 fulfilled = f[~f["order_status"].isin(["canceled", "unavailable"])]
@@ -72,7 +72,7 @@ top = tiers.loc["Top 10% of sellers by GMV"]
 rest = tiers.loc["Remaining 90%"]
 
 
-# ---------------------------------------------------------------- helpers
+#  helpers
 def new_figure(t, height):
     fig = plt.figure(figsize=(10, height), dpi=DPI, facecolor=t["surface"])
     return fig
@@ -127,7 +127,7 @@ def money(x):
     return f"R${x / 1e6:.2f}M" if x >= 1e6 else f"R${x / 1e3:.0f}k"
 
 
-# ---------------------------------------------------------------- 1. GMV by month
+#  1. GMV by month
 def chart_gmv(t, mode):
     fig = new_figure(t, 5.2)
     title_block(fig, t, "Monthly GMV grew fast, then levelled off",
@@ -162,7 +162,7 @@ def chart_gmv(t, mode):
     save(fig, "01_gmv_by_month", mode)
 
 
-# ---------------------------------------------------------------- 2. reviews, late vs on-time
+#  2. reviews, late vs on-time
 def chart_reviews(t, mode):
     fig = new_figure(t, 4.2)
     title_block(fig, t, "Late deliveries go with much worse reviews",
@@ -195,7 +195,7 @@ def chart_reviews(t, mode):
     save(fig, "02_reviews_late_vs_on_time", mode)
 
 
-# ---------------------------------------------------------------- 3. states: slow vs late
+#  3. states: slow vs late
 def chart_states(t, mode):
     fig = new_figure(t, 6.0)
     title_block(fig, t, "Slow isn't the same as late",
@@ -245,7 +245,7 @@ def chart_states(t, mode):
     save(fig, "03_state_delivery_vs_late", mode)
 
 
-# ---------------------------------------------------------------- 4. top sellers vs rest
+#  4. top sellers vs rest
 def chart_sellers(t, mode):
     fig = new_figure(t, 4.2)
     title_block(fig, t, "Top 10% of sellers: two-thirds of GMV, no better at delivering",
