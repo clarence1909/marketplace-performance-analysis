@@ -193,9 +193,8 @@ sql/
 powerbi_data/        (the 4 data files the dashboard is built from, exported by sql/05)
 charts/              (the README charts and make_charts.py, which draws them)
 powerbi_guide.md
+Visualised marketplace performance analysis Power BI
 insight_summary.md
-cv_bullets.md
-interview_prep.md
 README.md
 ```
 
