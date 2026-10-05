@@ -1,7 +1,7 @@
--- ============================================================================
+
 -- 03_fact_orders.sql
 -- Marketplace Performance & Seller Health Analysis (Olist)
--- ============================================================================
+
 -- Purpose
 --   A single view, one row per order_id, that every query in 04_analysis.sql
 --   and the Power BI model can GROUP BY / filter freely without worrying
@@ -31,7 +31,7 @@
 --   days_vs_estimate is estimated date minus delivered date: positive means
 --   delivered before the estimate (good), negative means delivered after it
 --   (late).
--- ============================================================================
+
 
 CREATE OR REPLACE VIEW fact_orders AS
 WITH item_agg AS (
